@@ -63,6 +63,11 @@ Repository access는 `gate-hell` 하나만, Permissions는 **Contents: Read and 
 - **세션 끝날 무렵:** 마지막 `save`를 실행하고, 아래 "진행 상황"을 갱신한 뒤 한 번 더 `save` 한다.
 - **규칙이 추가·변경되면:** 이 CLAUDE.md를 즉시 갱신하고 `save` 한다. 여기 없는 규칙은 다음 세션에 존재하지 않는다.
 - **토큰을 절대 프로젝트 폴더 안에 쓰지 않는다.** 출력에도 토큰 문자열을 그대로 남기지 않는다.
+- **`tools/gh.ps1` 을 고친 뒤에는 UTF-8 BOM 이 살아 있는지 확인한다.**
+  Windows PowerShell 5.1 은 BOM 없는 파일을 CP949 로 읽어 한글 주석이 깨지고,
+  깨진 바이트에 따옴표가 섞이면 스크립트 전체가 구문 오류로 죽는다.
+  확인: `[IO.File]::ReadAllBytes('tools\gh.ps1')[0..2]` 가 `239 187 191` 이어야 한다.
+  복구: 앞에 `0xEF 0xBB 0xBF` 를 붙여 다시 쓴다.
 
 ---
 
