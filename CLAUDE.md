@@ -106,18 +106,27 @@ numpy, pandas, pygame, pillow, requests, matplotlib 등 서드파티 패키지�
 
 ## 파일 구성
 
-| 파일 | 내용 | 작성자 |
-| --- | --- | --- |
-| `CLAUDE.md` | 이 문서. 규칙과 복원 절차 | Claude |
-| `프로젝트.md` | **과제 명세** — 교실 자동 냉난방/환기 시스템 (입력 6 / 출력 4) | 수업 |
-| `classroom_hvac.py` | 명세 구현. 실행하면 진리표 출력 후 창이 열린다 | Claude |
-| `00.py` | 사용자 작업 파일 | **사용자** |
-| `code/` | 수업에서 받은 실습 파일과 템플릿 (원본, 수정하지 않음) | 수업 |
-| `tools/gh.ps1` | GitHub 백업/복원 도구 | Claude |
-| `tools/repo.json` | 리포 좌표 (owner/repo/branch) | Claude |
+출처에 따라 폴더를 나눈다. **`수업자료/` 는 원본이므로 수정하지 않는다.**
 
-`classroom_hvac.py` 는 `code/05_invention_starter_2out.py` 의 구조를 따른다
+```
+gate_hell/
+├─ CLAUDE.md              이 문서. 루트 고정 (Claude Code 가 읽는 위치)
+├─ tools/                 루트 고정 (gh.ps1 이 상위 폴더를 프로젝트 루트로 계산함)
+│   ├─ gh.ps1             GitHub 백업/복원 도구
+│   └─ repo.json          리포 좌표
+├─ 수업자료/               선생님이 주신 것. 읽기 전용으로 취급
+│   ├─ code/              실습 파일과 템플릿 (solutions/ 는 교사용)
+│   ├─ 불 대수와 논리게이트(발명수업).pdf
+│   └─ 발명실 설문.png       QR 코드
+└─ 내작업/                 우리가 만든 것
+    ├─ 프로젝트.md          과제 명세 (사용자 작성)
+    ├─ classroom_hvac.py  명세 구현 (Claude 작성, 사용자 지시로)
+    └─ 00.py              사용자 작업 파일
+```
+
+`classroom_hvac.py` 는 `수업자료/code/05_invention_starter_2out.py` 의 구조를 따른다
 (학생이 수정하는 부분 / GUI 프레임워크 2분할, `decide()`, `TEST_CASES`).
+실행은 `cd 내작업` 후 `python classroom_hvac.py`.
 
 파일이 늘어나면 이 표에 추가한다. `gh.ps1 save`가 폴더 전체를 올리므로 파일 수 제한은 없다.
 
