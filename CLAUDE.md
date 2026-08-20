@@ -108,9 +108,15 @@ numpy, pandas, pygame, pillow, requests, matplotlib 등 서드파티 패키지�
 | 파일 | 내용 | 작성자 |
 | --- | --- | --- |
 | `CLAUDE.md` | 이 문서. 규칙과 복원 절차 | Claude |
-| `00.py` | 논리 실험실 본체 | **사용자** |
+| `프로젝트.md` | **과제 명세** — 교실 자동 냉난방/환기 시스템 (입력 6 / 출력 4) | 수업 |
+| `classroom_hvac.py` | 명세 구현. 실행하면 진리표 출력 후 창이 열린다 | Claude |
+| `00.py` | 사용자 작업 파일 | **사용자** |
+| `code/` | 수업에서 받은 실습 파일과 템플릿 (원본, 수정하지 않음) | 수업 |
 | `tools/gh.ps1` | GitHub 백업/복원 도구 | Claude |
 | `tools/repo.json` | 리포 좌표 (owner/repo/branch) | Claude |
+
+`classroom_hvac.py` 는 `code/05_invention_starter_2out.py` 의 구조를 따른다
+(학생이 수정하는 부분 / GUI 프레임워크 2분할, `decide()`, `TEST_CASES`).
 
 파일이 늘어나면 이 표에 추가한다. `gh.ps1 save`가 폴더 전체를 올리므로 파일 수 제한은 없다.
 
