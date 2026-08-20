@@ -13,10 +13,19 @@ GUI 프레임워크는 템플릿 그대로 두었다.
     출력  C: 냉방,  H: 난방,  A1: 창문 닫기 경고,  A2: 창문 열기 경고
 
     판단 규칙
-          C  = R and P and (not W) and T1 and (not Q)
-          H  = R and P and (not W) and T2 and (not Q)
-          A1 = R and P and (T1 or T2) and (not Q)
+          hot  = T1 and (not T2)      더위 신호가 믿을 만한가
+          cold = T2 and (not T1)      추위 신호가 믿을 만한가
+
+          C  = R and P and (not W) and hot and (not Q)
+          H  = R and P and (not W) and cold and (not Q)
+          A1 = R and P and W and (hot or cold) and (not Q)
           A2 = P and Q
+
+    불가능한 입력 처리
+          바깥 온도가 28도를 넘으면서 동시에 18도 미만일 수는 없다.
+          T1 과 T2 가 함께 참이면 온도 센서가 고장 난 것으로 보고
+          온도로 움직이는 출력(C, H, A1)을 모두 멈춘다.
+          화면에서도 두 체크박스가 동시에 켜지지 않도록 막는다.
 
 실행 방법:
     python classroom_hvac.py
@@ -42,6 +51,11 @@ INPUT_LABELS = [
     "이산화탄소 농도가 높다 (Q)",
 ]
 
+# 동시에 참일 수 없는 센서 묶음. INPUT_LABELS 의 번호로 적는다.
+# 3번 T1(28도 초과)과 4번 T2(18도 미만)는 물리적으로 함께 성립할 수 없으므로,
+# 하나를 켜면 다른 하나가 자동으로 꺼진다.
+EXCLUSIVE_INPUTS = [(3, 4)]
+
 # 출력 장치 네 개의 이름과 상태 문구 (순서를 맞춘다)
 OUTPUT_LABELS = ["냉방 (C)", "난방 (H)", "창문 닫기 경고 (A1)", "창문 열기 경고 (A2)"]
 MESSAGES_ON = [
@@ -60,12 +74,17 @@ MESSAGES_OFF = [
 
 def decide(auto_mode, person, window_open, too_hot, too_cold, co2_high):
     """판단 규칙: 네 출력의 목적이 다르므로 조건식도 다르다."""
-    # 냉난방은 창문이 닫혀 있어야 의미가 있고, 환기가 먼저인 상황에서는 멈춘다.
-    cooling = auto_mode and person and not window_open and too_hot and not co2_high
-    heating = auto_mode and person and not window_open and too_cold and not co2_high
+    # 28도 초과이면서 동시에 18도 미만일 수는 없다.
+    # 두 신호가 함께 들어오면 센서 고장으로 보고 온도 판단을 하지 않는다.
+    hot = too_hot and not too_cold
+    cold = too_cold and not too_hot
 
-    # 바깥 온도가 극단적이면 창문을 닫으라고 알린다.
-    close_warning = auto_mode and person and (too_hot or too_cold) and not co2_high
+    # 냉난방은 창문이 닫혀 있어야 의미가 있고, 환기가 먼저인 상황에서는 멈춘다.
+    cooling = auto_mode and person and not window_open and hot and not co2_high
+    heating = auto_mode and person and not window_open and cold and not co2_high
+
+    # 창문이 열려 있을 때만 닫으라고 알린다. 이미 닫혀 있으면 알릴 이유가 없다.
+    close_warning = auto_mode and person and window_open and (hot or cold) and not co2_high
 
     # 공기 질은 안전 문제이므로 자동 운영 모드와 상관없이 경고한다.
     open_warning = person and co2_high
@@ -126,11 +145,11 @@ TEST_CASES = [
     ((1, 0, 1, 1, 1, 1), (0, 0, 0, 0)),
     ((1, 1, 0, 0, 0, 0), (0, 0, 0, 0)),
     ((1, 1, 0, 0, 0, 1), (0, 0, 0, 1)),
-    ((1, 1, 0, 0, 1, 0), (0, 1, 1, 0)),
+    ((1, 1, 0, 0, 1, 0), (0, 1, 0, 0)),
     ((1, 1, 0, 0, 1, 1), (0, 0, 0, 1)),
-    ((1, 1, 0, 1, 0, 0), (1, 0, 1, 0)),
+    ((1, 1, 0, 1, 0, 0), (1, 0, 0, 0)),
     ((1, 1, 0, 1, 0, 1), (0, 0, 0, 1)),
-    ((1, 1, 0, 1, 1, 0), (1, 1, 1, 0)),
+    ((1, 1, 0, 1, 1, 0), (0, 0, 0, 0)),
     ((1, 1, 0, 1, 1, 1), (0, 0, 0, 1)),
     ((1, 1, 1, 0, 0, 0), (0, 0, 0, 0)),
     ((1, 1, 1, 0, 0, 1), (0, 0, 0, 1)),
@@ -138,7 +157,7 @@ TEST_CASES = [
     ((1, 1, 1, 0, 1, 1), (0, 0, 0, 1)),
     ((1, 1, 1, 1, 0, 0), (0, 0, 1, 0)),
     ((1, 1, 1, 1, 0, 1), (0, 0, 0, 1)),
-    ((1, 1, 1, 1, 1, 0), (0, 0, 1, 0)),
+    ((1, 1, 1, 1, 1, 0), (0, 0, 0, 0)),
     ((1, 1, 1, 1, 1, 1), (0, 0, 0, 1)),
 ]
 
@@ -349,9 +368,23 @@ def main() -> None:
             text="입력 {}  ->  출력 {}".format(bits(values), bits(results))
         )
 
+    def make_toggle(index):
+        """센서를 켤 때, 함께 참일 수 없는 센서는 자동으로 끈다."""
+
+        def on_toggle() -> None:
+            if sensor_vars[index].get():
+                for group in EXCLUSIVE_INPUTS:
+                    if index in group:
+                        for other in group:
+                            if other != index:
+                                sensor_vars[other].set(False)
+            update_output()
+
+        return on_toggle
+
     for row, (label, var) in enumerate(zip(INPUT_LABELS, sensor_vars)):
         ttk.Checkbutton(
-            sensor_box, text=label, variable=var, command=update_output
+            sensor_box, text=label, variable=var, command=make_toggle(row)
         ).grid(row=row, column=0, sticky="w", pady=1)
 
     button_box = ttk.Frame(outer)
