@@ -1,4 +1,4 @@
-# gh.ps1 — git 없이 GitHub와 주고받는 백업 도구
+﻿# gh.ps1 — git 없이 GitHub와 주고받는 백업 도구
 #
 # 이 PC는 재시작하면 파일까지 초기화된다. git은 설치되어 있지 않고 설치해도 사라진다.
 # 그래서 GitHub REST API를 HTTPS로 직접 호출한다. 설치도, 시스템 변경도 없다.
@@ -29,7 +29,8 @@ $ConfigPath = Join-Path $Root 'tools\repo.json'
 $TokenPath = Join-Path $env:LOCALAPPDATA 'gate_hell_token.txt'
 
 # 올리지 않을 것들 (repo.json 은 비밀이 아니고 복원에 필요하므로 올린다)
-$Skip = @('__pycache__', '.git', '.vscode', '.pyc', '.pyo', 'token')
+# 발표대본: 사용자가 커밋하지 말라고 지시함. 노션으로 옮겨 쓰는 임시 파일이다.
+$Skip = @('__pycache__', '.git', '.vscode', '.pyc', '.pyo', 'token', '발표대본')
 
 function Read-Config {
     if (-not (Test-Path $ConfigPath)) {
