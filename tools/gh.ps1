@@ -155,9 +155,10 @@ switch ($Action) {
             Write-Output "  + $(Get-RepoPath $f)"
         }
 
-        # 2. 부모 커밋 기준으로 트리를 얹는다
-        $prev = Invoke-GH GET "$base/git/commits/$parent"
-        $treeBody = @{ tree = $tree; base_tree = $prev.tree.sha }
+        # 2. base_tree 를 쓰지 않는다. 매번 전체 파일을 올리므로 트리를 통째로 새로 만든다.
+        #    그래야 로컬에서 지우거나 옮긴 파일이 리포에도 그대로 반영된다.
+        #    base_tree 를 쓰면 사라진 파일이 리포에 남는다.
+        $treeBody = @{ tree = $tree }
 
         # 3. 트리 -> 커밋 -> 브랜치 이동
         $newTree = Invoke-GH POST "$base/git/trees" $treeBody
