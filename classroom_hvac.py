@@ -30,6 +30,17 @@ GUI 프레임워크는 템플릿 그대로 두었다.
           온도로 움직이는 출력(C, H, A1)을 모두 멈춘다.
           화면에서도 두 체크박스가 동시에 켜지지 않도록 막는다.
 
+    수동 조작
+          자동 운영 모드(R)가 꺼지면 사람이 냉방과 난방을 직접 켜고 끈다.
+          R 을 다시 켜면 자동 판단이 되찾아가고 수동 스위치는 잠긴다.
+
+              C = (R and 자동냉방) or ((not R) and 수동냉방)
+              H = (R and 자동난방) or ((not R) and 수동난방)
+
+          R 이 선택 신호로 동작하는 2:1 멀티플렉서와 같은 모양이다.
+          경고음은 안전 장치라 수동 모드에서도 자동 판단을 그대로 쓴다.
+          진리표(TEST_CASES)는 자동 운영 논리만 담는다.
+
 실행 방법:
     python classroom_hvac.py
 """
@@ -96,7 +107,36 @@ def decide(auto_mode, person, window_open, too_hot, too_cold, co2_high):
     return cooling, heating, close_warning, open_warning
 
 
+# 자동 운영 모드가 꺼졌을 때 사람이 직접 켜고 끄는 스위치
+MANUAL_LABELS = ["수동 냉방", "수동 난방"]
+
+# 두 스위치는 동시에 켤 수 없다. 냉방과 난방을 함께 돌릴 수는 없기 때문이다.
+EXCLUSIVE_MANUAL = [(0, 1)]
+
+
+def final_outputs(sensors, manual):
+    """자동 운영 모드면 decide()의 판단을, 아니면 수동 스위치를 따른다.
+
+    R 이 선택 신호로 동작하는 2:1 멀티플렉서와 같은 모양이다.
+
+        C = (R and 자동냉방) or ((not R) and 수동냉방)
+
+    경고음은 안전 장치이므로 수동 모드에서도 자동 판단을 그대로 쓴다.
+    A1 은 조건에 R 이 들어 있어 수동 모드에서는 저절로 꺼지고,
+    A2 는 R 과 무관하므로 수동 모드에서도 공기가 나빠지면 울린다.
+    """
+    auto_mode = sensors[0]
+    cooling_auto, heating_auto, close_warning, open_warning = decide(*sensors)
+    manual_cooling, manual_heating = manual
+
+    cooling = (auto_mode and cooling_auto) or (not auto_mode and manual_cooling)
+    heating = (auto_mode and heating_auto) or (not auto_mode and manual_heating)
+
+    return cooling, heating, close_warning, open_warning
+
+
 # 제품 시험표: ((R, P, W, T1, T2, Q), (C, H, A1, A2))
+# 자동 운영 모드의 논리만 담는다. 수동 조작은 사람이 결정하므로 진리표에 넣지 않는다.
 # 진리표 64줄을 그대로 옮겨 적었다. 0 은 False, 1 은 True 를 뜻한다.
 TEST_CASES = [
     ((0, 0, 0, 0, 0, 0), (0, 0, 0, 0)),
@@ -325,6 +365,14 @@ def main() -> None:
 
     sensor_vars = [tk.BooleanVar(value=False) for _ in INPUT_LABELS]
 
+    manual_box = ttk.LabelFrame(
+        outer, text="수동 조작 (자동 운영 모드가 꺼졌을 때만)", padding=10
+    )
+    manual_box.pack(fill="x", pady=(10, 0))
+
+    manual_vars = [tk.BooleanVar(value=False) for _ in MANUAL_LABELS]
+    manual_checks = []
+
     output_box = ttk.LabelFrame(outer, text="출력 장치", padding=10)
     output_box.pack(fill="x", pady=(10, 0))
 
@@ -352,13 +400,21 @@ def main() -> None:
     status_label = ttk.Label(outer, text="")
 
     def update_output(*_args) -> None:
-        """센서 상태가 바뀔 때마다 네 출력을 함께 갱신한다."""
+        """센서와 수동 스위치가 바뀔 때마다 네 출력을 함께 갱신한다."""
         values = [var.get() for var in sensor_vars]
+        manual = [var.get() for var in manual_vars]
         try:
-            results = outputs_of(values)
+            outputs_of(values)  # decide()가 출력 개수를 맞게 돌려주는지 먼저 확인
+            results = final_outputs(values, manual)
         except ValueError as error:
             status_label.config(text=str(error))
             return
+
+        # 자동 운영 모드가 켜져 있으면 수동 스위치는 잠근다.
+        auto_mode = values[0]
+        for check in manual_checks:
+            check.state(["disabled"] if auto_mode else ["!disabled"])
+
         for index, result in enumerate(results):
             state_labels[index].config(
                 text=TEXT_ON if result else TEXT_OFF,
@@ -369,7 +425,9 @@ def main() -> None:
                 text=MESSAGES_ON[index] if result else MESSAGES_OFF[index]
             )
         status_label.config(
-            text="입력 {}  ->  출력 {}".format(bits(values), bits(results))
+            text="[{} 모드]  입력 {}  ->  출력 {}".format(
+                "자동" if auto_mode else "수동", bits(values), bits(results)
+            )
         )
 
     def make_toggle(index):
@@ -391,11 +449,34 @@ def main() -> None:
             sensor_box, text=label, variable=var, command=make_toggle(row)
         ).grid(row=row, column=0, sticky="w", pady=1)
 
+    def make_manual_toggle(index):
+        """수동 스위치 하나를 켜면 함께 켤 수 없는 스위치는 끈다."""
+
+        def on_toggle() -> None:
+            if manual_vars[index].get():
+                for group in EXCLUSIVE_MANUAL:
+                    if index in group:
+                        for other in group:
+                            if other != index:
+                                manual_vars[other].set(False)
+            update_output()
+
+        return on_toggle
+
+    for row, (label, var) in enumerate(zip(MANUAL_LABELS, manual_vars)):
+        check = ttk.Checkbutton(
+            manual_box, text=label, variable=var, command=make_manual_toggle(row)
+        )
+        check.grid(row=row, column=0, sticky="w", pady=1)
+        manual_checks.append(check)
+
     button_box = ttk.Frame(outer)
     button_box.pack(fill="x", pady=(12, 0))
 
     def reset_sensors() -> None:
         for var in sensor_vars:
+            var.set(False)
+        for var in manual_vars:
             var.set(False)
         update_output()
 
